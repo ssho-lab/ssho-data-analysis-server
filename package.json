@@ -19,6 +19,7 @@
   "homepage": "https://github.com/ssho-lab/ssho-data-analysis-server#readme",
   "dependencies": {
     "@elastic/elasticsearch": "^7.9.1",
-    "dot-env": "0.0.1"
+    "axios": "^0.21.0",
+    "dotenv": "^8.2.0"
   }
 }
