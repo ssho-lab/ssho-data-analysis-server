@@ -1,0 +1,24 @@
+{
+  "name": "ssho-data-analysis-server",
+  "version": "1.0.0",
+  "description": "스쇼 데이터 분석 및 집계 백엔드 서버",
+  "main": "handler.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ssho-lab/ssho-data-analysis-server.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/ssho-lab/ssho-data-analysis-server/issues"
+  },
+  "homepage": "https://github.com/ssho-lab/ssho-data-analysis-server#readme",
+  "dependencies": {
+    "@elastic/elasticsearch": "^7.9.1",
+    "dot-env": "0.0.1"
+  }
+}
