@@ -3,7 +3,7 @@ const axios = require("axios");
 
 const createResponse = (status, body) => ({
   statusCode: status,
-  body: JSON.stringify(body),
+  body: body,
 });
 
 exports.elasticsearchTest = async (event, context, callback) => {
@@ -23,10 +23,37 @@ exports.elasticsearchTest = async (event, context, callback) => {
   return createResponse(200, body);
 };
 
-exports.getItem = async (event) => {
+exports.getCountsPerItem = async (event) => {
   try {
+    const { body } = await client.search({
+      index: "activity-log-swipe",
+      body: {
+        aggs: {
+          value_count: {
+            terms: {
+              field: "itemId",
+            },
+          },
+        },
+      },
+    });
+
+    const itemIdCounts = body.aggregations.value_count.buckets;
+
     const response = await axios.get("http://api.ssho.tech:8081/item");
-    return createResponse(200, response.data.slice(0, 20));
+    const itemList = response.data;
+
+    const map = new Map();
+
+    itemList.forEach((item) => map.set(item.id, { ...item, showCount: 0 }));
+
+    itemIdCounts.forEach((el) =>
+      map.set(el.key, { ...map.get(el.key), showCount: el.doc_count })
+    );
+
+    const itemListWithCount = [...map.values()];
+
+    return createResponse(200, itemListWithCount);
   } catch (err) {
     return createResponse(400, err);
   }

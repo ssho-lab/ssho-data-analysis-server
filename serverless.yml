@@ -63,8 +63,8 @@ functions:
       - http:
           path: elasticsearch
           method: get
-  getItem:
-    handler: src/handler.getItem
+  getCountsPerItem:
+    handler: src/handler.getCountsPerItem
     events:
       - http:
           path: item
