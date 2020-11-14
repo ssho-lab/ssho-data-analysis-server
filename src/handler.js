@@ -3,7 +3,10 @@ const axios = require("axios");
 
 const createResponse = (status, body) => ({
   statusCode: status,
-  body: body,
+  headers: {
+    "Access-Control-Allow-Origin": "*",
+  },
+  body: JSON.stringify(body),
 });
 
 exports.elasticsearchTest = async (event, context, callback) => {
@@ -23,7 +26,7 @@ exports.elasticsearchTest = async (event, context, callback) => {
   return createResponse(200, body);
 };
 
-exports.getCountsPerItem = async (event) => {
+exports.getItemListWithCount = async (event) => {
   try {
     const { body } = await client.search({
       index: "activity-log-swipe",
@@ -47,13 +50,75 @@ exports.getCountsPerItem = async (event) => {
 
     itemList.forEach((item) => map.set(item.id, { ...item, showCount: 0 }));
 
-    itemIdCounts.forEach((el) =>
-      map.set(el.key, { ...map.get(el.key), showCount: el.doc_count })
-    );
+    itemIdCounts.forEach((el) => {
+      if (!map.has(el.key)) return;
+      map.set(el.key, { ...map.get(el.key), showCount: el.doc_count });
+    });
 
     const itemListWithCount = [...map.values()];
 
     return createResponse(200, itemListWithCount);
+  } catch (err) {
+    return createResponse(400, err);
+  }
+};
+
+exports.getSwipeSetsPerUser = async (event) => {
+  try {
+    const { data: swipeLogs } = await axios.get(
+      "http://api.ssho.tech:8082/log/swipe"
+    );
+
+    let swipeLogsPerUser = new Map();
+
+    swipeLogs.forEach((log) => {
+      if (swipeLogsPerUser.has(log.userId)) {
+        swipeLogsPerUser.get(log.userId).setList.push(log.cardSetSeq);
+      } else {
+        swipeLogsPerUser.set(log.userId, {
+          userId: log.userId,
+          setList: [],
+          setCount: 0,
+          averageLike: 0,
+        });
+      }
+    });
+
+    [...swipeLogsPerUser.keys()].forEach((userId) => {
+      swipeLogsPerUser.get(userId).setList = Array.from(
+        new Set(swipeLogsPerUser.get(userId).setList)
+      );
+    });
+
+    [...swipeLogsPerUser.keys()].forEach((userId) => {
+      swipeLogsPerUser.get(userId).setList = swipeLogsPerUser
+        .get(userId)
+        .setList.map((setId) => {
+          return { setId, cardList: [], likeRatio: 0, superLikeRatio: 0 };
+        });
+    });
+
+    swipeLogs.forEach((log) => {
+      swipeLogsPerUser
+        .get(log.userId)
+        .setList[log.cardSetSeq].cardList.push(log);
+    });
+
+    [...swipeLogsPerUser.keys()].forEach((userId) => {
+      swipeLogsPerUser.get(userId).setCount = swipeLogsPerUser.get(
+        userId
+      ).setList.length;
+      swipeLogsPerUser.get(userId).setList.forEach((set) => {
+        set.likeRatio =
+          set.cardList.filter((card) => card.score === 1).length /
+          set.cardList.length;
+        set.superLikeRatio =
+          set.cardList.filter((card) => card.score === 2).length /
+          set.cardList.length;
+      });
+    });
+
+    return createResponse(200, [...swipeLogsPerUser.values()]);
   } catch (err) {
     return createResponse(400, err);
   }

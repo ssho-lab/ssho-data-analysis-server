@@ -63,11 +63,18 @@ functions:
       - http:
           path: elasticsearch
           method: get
-  getCountsPerItem:
-    handler: src/handler.getCountsPerItem
+  getItemListWithCount:
+    handler: src/handler.getItemListWithCount
+    timeout: 30
     events:
       - http:
           path: item
+          method: get
+  getSwipeSetsPerUser:
+    handler: src/handler.getSwipeSetsPerUser
+    events:
+      - http:
+          path: swipeSets
           method: get
 #    The following are a few example events you can configure
 #    NOTE: Please make sure to change your handler code to work with those events
