@@ -43,12 +43,15 @@ exports.getItemListWithCount = async (event) => {
 
     const itemIdCounts = body.aggregations.value_count.buckets;
 
-    const response = await axios.get("http://api.ssho.tech:8081/item");
+    const response = await axios.get("http://api.ssho.tech:8080/item");
     const itemList = response.data;
 
     const map = new Map();
 
-    itemList.forEach((item) => map.set(item.id, { ...item, showCount: 0 }));
+    itemList.forEach((item) => {
+      if (!item) return;
+      map.set(item.id, { ...item, showCount: 0 });
+    });
 
     itemIdCounts.forEach((el) => {
       if (!map.has(el.key)) return;
@@ -65,15 +68,13 @@ exports.getItemListWithCount = async (event) => {
 
 exports.getSwipeSetsPerUser = async (event) => {
   try {
-    const { data: swipeLogs } = await axios.get(
-      "http://api.ssho.tech:8082/log/swipe"
-    );
+    const { data: swipeLogs } = await axios.get("http://api.ssho.tech:8082/log/swipe");
 
     let swipeLogsPerUser = new Map();
 
     swipeLogs.forEach((log) => {
       if (swipeLogsPerUser.has(log.userId)) {
-        swipeLogsPerUser.get(log.userId).setList.push(log.cardSetSeq);
+        swipeLogsPerUser.get(log.userId).setList.push(log.userCardSetId);
       } else {
         swipeLogsPerUser.set(log.userId, {
           userId: log.userId,
@@ -86,40 +87,33 @@ exports.getSwipeSetsPerUser = async (event) => {
 
     [...swipeLogsPerUser.keys()].forEach((userId) => {
       swipeLogsPerUser.get(userId).setList = Array.from(
-        new Set(swipeLogsPerUser.get(userId).setList)
+        new Set([...swipeLogsPerUser.get(userId).setList])
       );
     });
 
     [...swipeLogsPerUser.keys()].forEach((userId) => {
-      swipeLogsPerUser.get(userId).setList = swipeLogsPerUser
-        .get(userId)
-        .setList.map((setId) => {
-          return { setId, cardList: [], likeRatio: 0, superLikeRatio: 0 };
-        });
+      swipeLogsPerUser.get(userId).setList = swipeLogsPerUser.get(userId).setList.map((setId) => {
+        return { setId, cardList: [], likeRatio: 0 };
+      });
     });
 
     swipeLogs.forEach((log) => {
-      swipeLogsPerUser
+      const set = swipeLogsPerUser
         .get(log.userId)
-        .setList[log.cardSetSeq].cardList.push(log);
+        .setList.find((set) => set.setId == log.userCardSetId);
+      set.cardList.push(log);
     });
 
     [...swipeLogsPerUser.keys()].forEach((userId) => {
-      swipeLogsPerUser.get(userId).setCount = swipeLogsPerUser.get(
-        userId
-      ).setList.length;
+      swipeLogsPerUser.get(userId).setCount = swipeLogsPerUser.get(userId).setList.length;
       swipeLogsPerUser.get(userId).setList.forEach((set) => {
-        set.likeRatio =
-          set.cardList.filter((card) => card.score === 1).length /
-          set.cardList.length;
-        set.superLikeRatio =
-          set.cardList.filter((card) => card.score === 2).length /
-          set.cardList.length;
+        set.likeRatio = set.cardList.filter((card) => card.score == 1).length / set.cardList.length;
       });
     });
 
     return createResponse(200, [...swipeLogsPerUser.values()]);
   } catch (err) {
+    console.log(err);
     return createResponse(400, err);
   }
 };
